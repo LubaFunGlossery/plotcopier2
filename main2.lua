@@ -298,6 +298,49 @@ local function CreatePart(Position,PartInstance)
     return Response
 end
 
+local function CreateModel(ModelInstance, ParentCFrame)
+    local ModelParts = {}
+    
+    for _, Part in ipairs(ModelInstance:GetDescendants()) do
+        if Part:IsA("BasePart") then
+            table.insert(ModelParts, Part)
+        end
+    end
+
+    for _, Part in ipairs(ModelParts) do
+        local Offset = Part.CFrame.Position - ParentCFrame.Position
+        local Position = MyPlot.Parent.Position + Offset
+        local P = CreatePart(CFrame.new(Position), Part)
+        
+        Collideify(P, Part.CanCollide)
+        ResizePart(P, Part.Size)
+        ColorPart(P, Part.Color)
+        MaterializePart(P, Part.Material, Part.Transparency, Part.Reflectance)
+
+        for _, Child in pairs(Part:GetChildren()) do
+            if Child:IsA("Decal") then
+                Decalize(P, Child)
+            elseif Child:IsA("Texture") then
+                TexturePart(P, Child)
+            end
+        end
+
+        if Part:FindFirstChildOfClass("SpecialMesh") then
+            Meshinate(P, Part.Mesh)
+        end
+        if Part:FindFirstChildOfClass("SurfaceLight") then
+            Lightify(P, Part:FindFirstChildOfClass("SurfaceLight"))
+        end
+        if Part:FindFirstChildOfClass("PointLight") then
+            Lightify(P, Part:FindFirstChildOfClass("PointLight"))
+        end
+        if Part:FindFirstChildOfClass("SpotLight") then
+            Lightify(P, Part:FindFirstChildOfClass("SpotLight"))
+        end
+    end
+end
+
+
 local function ResizePart(Part,Size)
     if Part ~= nil then
     local args = {
@@ -344,6 +387,36 @@ local function Decalize(Part,Decal)
     
     syncRemote():InvokeServer(unpack(args))
     
+end
+
+local function TexturePart(Part, Texture)
+    local args = {
+        [1] = "CreateTextures",
+        [2] = {
+            [1] = {
+                ["Part"] = Part,
+                ["Face"] = Texture.Face,
+                ["TextureType"] = "Texture"
+            }
+        }
+    }
+    
+    local Response = syncRemote():InvokeServer(unpack(args))
+    
+    local args = {
+        [1] = "SyncTexture",
+        [2] = {
+            [1] = {
+                ["Part"] = Part,
+                ["Face"] = Texture.Face,
+                ["TextureType"] = "Texture",
+                ["Texture"] = Texture.Texture,
+                ["Transparency"] = Texture.Transparency
+            }
+        }
+    }
+    
+    syncRemote():InvokeServer(unpack(args))
 end
 
 local function ColorPart(Part,Color)
@@ -507,111 +580,87 @@ end
 
 local Building = false
 
-local function BuildPlot(Folder,CFrame)
-    Notify("Loading","Loading plot...")
+local function BuildPlot(Folder, ParentCFrame)
+    Notify("Loading", "Loading plot...")
 
     Folder = Folder:Clone()
 
-    for _,v in pairs(Folder.Build:GetDescendants()) do
-        if v:IsA("BasePart") then
-        local Offset = v.CFrame.Position - CFrame.Position
-        v.Position = MyPlot.Parent.Position + Offset
-        end
-        if v:IsA("Model") then
-            for i,x in pairs(v:GetChildren()) do
-                x.Parent = Folder.Build
-            end
-            v:Destroy()
-        end
-        if v:IsA("Folder") then
-            v:Destroy()
-        end
-    end
-
-    local FolderTable = Folder.Build:GetChildren()
-
-    table.sort(FolderTable,
-    function(a, b)
-        local aIsBasePart = a:IsA("BasePart")
-        local bIsBasePart = b:IsA("BasePart")
-
-        if aIsBasePart and bIsBasePart then
-            return a.Size.Magnitude > b.Size.Magnitude
-        elseif aIsBasePart and not bIsBasePart then
-            return true -- Ensure all BaseParts come before non-BaseParts
-        elseif not aIsBasePart and bIsBasePart then
-            return false -- Ensure non-BaseParts come after BaseParts
-        else
-            return false -- Or some other logic for non-BaseParts
-        end
-    end)
-
+    local function createPart(part, parentCFrame)
+        local offset = part.CFrame.Position - parentCFrame.Position
+        local position = MyPlot.Parent.Position + offset
     
-    --local FolderTable = Folder.Build:GetDescendants()
-
-    -- for _,v in pairs(Folder:GetChildren()) do
-    --     v.Transparency = 0.5
-    --     v.Parent = workspace
-    -- end
-
-    Building = true
-
-    -- task.spawn(function()
-    --     while Building do
-    --         wait(10)
-    --         game:GetService("Players").LocalPlayer.PlayerGui.Chat.Frame.ChatBarParentFrame.Frame.BoxFrame.Frame.ChatBar.Text = "!svp "..CurrentPlot
-    --         for i,v in pairs(getconnections(game:GetService("Players").LocalPlayer.PlayerGui.Chat.Frame.ChatBarParentFrame.Frame.BoxFrame.Frame.ChatBar.FocusLost)) do
-    --             v:Fire(true)
-    --         end
-    --     end
-    -- end)
-
-    Notify("Loaded","Loaded plot!")
-
-    task.wait(1)
-
-    Notify("Building","Building plot!")
-
-    for i,v in ipairs(FolderTable) do
-        --if n % 2 == 0 then
-        pcall(function()
-            if v:IsA("BasePart") then
-                task.wait(0.04)
-
-                local P = CreatePart(v.CFrame,v)
-
-                Collideify(P,v.CanCollide)
-                ResizePart(P,v.Size)
-                ColorPart(P,v.Color)
-                MaterializePart(P,v.Material,v.Transparency,v.Reflectance)
-
-                for i,v in pairs(v:GetChildren()) do
-                    if v:IsA("Decal") then
-                        Decalize(P,v)
-                    end
-                end
-
-                if v:FindFirstChildOfClass("SpecialMesh") then
-                    Meshinate(P,v.Mesh)
-                end
-                if v:FindFirstChildOfClass("SurfaceLight") then
-                    Lightify(P,v:FindFirstChildOfClass("SurfaceLight"))
-                end
-                if v:FindFirstChildOfClass("PointLight") then
-                    Lightify(P,v:FindFirstChildOfClass("PointLight"))
-                end
-                if v:FindFirstChildOfClass("SpotLight") then
-                    Lightify(P,v:FindFirstChildOfClass("SpotLight"))
-                end
-
-                Notify("Building...",tostring(i).."/"..tostring(#FolderTable))
+        local P = CreatePart(CFrame.new(position), part)
+    
+        Collideify(P, part.CanCollide)
+        ResizePart(P, part.Size)
+        ColorPart(P, part.Color)
+        MaterializePart(P, part.Material, part.Transparency, part.Reflectance)
+    
+        for _, child in pairs(part:GetChildren()) do
+            if child:IsA("Decal") then
+                Decalize(P, child)
+            elseif child:IsA("Texture") then
+                TexturePart(P, child)
             end
-        end)
+        end
+    
+        if part:FindFirstChildOfClass("SpecialMesh") then
+            Meshinate(P, part.Mesh)
+        end
+        if part:FindFirstChildOfClass("SurfaceLight") then
+            Lightify(P, part:FindFirstChildOfClass("SurfaceLight"))
+        end
+        if part:FindFirstChildOfClass("PointLight") then
+            Lightify(P, part:FindFirstChildOfClass("PointLight"))
+        end
+        if part:FindFirstChildOfClass("SpotLight") then
+            Lightify(P, part:FindFirstChildOfClass("SpotLight"))
+        end
+    end
+    
+    local function createModel(model, parentCFrame)
+        local modelParts = {}
+
+        for _, part in ipairs(model:GetDescendants()) do
+            if part:IsA("BasePart") then
+                table.insert(modelParts, part)
+            end
+        end
+
+        if #modelParts > 0 then
+            local groupPosition = MyPlot.Parent.Position + (modelParts[1].CFrame.Position - parentCFrame.Position)
+
+            for _, part in ipairs(modelParts) do
+                local offset = part.CFrame.Position - modelParts[1].CFrame.Position
+                local position = groupPosition + offset
+                createPart(part, CFrame.new(position))
+            end
+        end
     end
 
-    Notify("Done","Plot built!")
+    local function buildFolder(folder, parentCFrame)
+        for _, item in ipairs(folder:GetChildren()) do
+            if item:IsA("Model") then
+                createModel(item, parentCFrame)
+            elseif item:IsA("BasePart") then
+                createPart(item, parentCFrame)
+            elseif item:IsA("Folder") then
+                buildFolder(item, parentCFrame)
+            end
+        end
+    end
 
-    Building = false
+    for _, v in pairs(Folder.Build:GetDescendants()) do
+        if v:IsA("BasePart") then
+            createPart(v, ParentCFrame)
+        elseif v:IsA("Model") then
+            createModel(v, ParentCFrame)
+        elseif v:IsA("Folder") then
+            buildFolder(v, ParentCFrame)
+        end
+    end
+
+    Notify("Done", "Plot built!")
 end
 
 local CurrentSelection = ""
