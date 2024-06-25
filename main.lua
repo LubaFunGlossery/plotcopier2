@@ -264,8 +264,7 @@ local function syncRemote()
     return game:GetService("Players").LocalPlayer.Character:FindFirstChild("Building Tools").SyncAPI.ServerEndpoint or game:GetService("Players").LocalPlayer.Backpack:FindFirstChild("Building Tools").SyncAPI.ServerEndpoint
 end
 
-local function CreatePart(Position,PartInstance)
-    
+local function CreatePart(Position, PartInstance)
     local Type = "Normal"
 
     if PartInstance.ClassName == "WedgePart" then
@@ -292,12 +291,28 @@ local function CreatePart(Position,PartInstance)
         [3] = Position,
         [4] = MyPlot
     }
-    
+
     local Response = syncRemote():InvokeServer(unpack(args))
+
+    -- Copy textures
+    if PartInstance:FindFirstChildOfClass("Decal") then
+        for _, decal in pairs(PartInstance:GetChildren()) do
+            if decal:IsA("Decal") then
+                Decalize(Response, decal)
+            end
+        end
+    end
+
+    if PartInstance:FindFirstChildOfClass("Texture") then
+        for _, texture in pairs(PartInstance:GetChildren()) do
+            if texture:IsA("Texture") then
+                TexturePart(Response, texture)
+            end
+        end
+    end
 
     return Response
 end
-
 local function ResizePart(Part,Size)
     if Part ~= nil then
     local args = {
